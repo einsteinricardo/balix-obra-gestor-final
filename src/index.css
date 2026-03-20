@@ -1,0 +1,118 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Lato:wght@300;400;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 85 27% 12%;
+    --foreground: 0 0% 98%;
+
+    --card: 85 27% 14%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 85 27% 14%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 36 60% 40%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 85 27% 18%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 85 5% 25%;
+    --muted-foreground: 0 0% 70%;
+
+    --accent: 36 60% 40%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 85 5% 30%;
+    --input: 85 5% 30%;
+    --ring: 36 60% 40%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 85 27% 10%;
+    --sidebar-foreground: 0 0% 85%;
+    --sidebar-primary: 36 60% 40%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 85 5% 15%;
+    --sidebar-accent-foreground: 0 0% 90%;
+    --sidebar-border: 85 10% 20%;
+    --sidebar-ring: 36 60% 40%;
+  }
+
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-balix-primary text-balix-light font-lato;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-playfair font-semibold text-white;
+  }
+}
+
+@layer components {
+  .card-stats {
+    @apply bg-card rounded-xl shadow-md p-5 border border-border/40 transition-all duration-300 hover:shadow-lg hover:border-accent/30;
+  }
+  .dashboard-card {
+    @apply bg-card rounded-xl shadow-md border border-border/40;
+  }
+  .nav-link {
+    @apply flex items-center gap-3 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors;
+  }
+  .nav-link.active {
+    @apply bg-sidebar-primary text-sidebar-primary-foreground;
+  }
+  
+  /* Button hover effects */
+  .btn-hover {
+    @apply transition-all duration-200 ease-in-out;
+  }
+  
+  .btn-hover:hover {
+    @apply transform hover:scale-105 hover:shadow-lg;
+  }
+  
+  .btn-hover:active {
+    @apply transform scale-95;
+  }
+  
+  /* Form validation styles */
+  .input-success {
+    @apply border-green-500 focus:border-green-500 focus:ring-green-500;
+  }
+  
+  .input-error {
+    @apply border-red-500 focus:border-red-500 focus:ring-red-500;
+  }
+  
+  /* Loading animation */
+  .loading {
+    @apply animate-pulse;
+  }
+  
+  /* Toast improvements */
+  .toast-success {
+    @apply bg-green-500/90 text-white border-green-600;
+  }
+  
+  .toast-error {
+    @apply bg-red-500/90 text-white border-red-600;
+  }
+  
+  .toast-warning {
+    @apply bg-yellow-500/90 text-white border-yellow-600;
+  }
+  
+  .toast-info {
+    @apply bg-blue-500/90 text-white border-blue-600;
+  }
+}

@@ -1,0 +1,2 @@
+ALTER TABLE public.orcamento_atividades DROP COLUMN custo_total;
+ALTER TABLE public.orcamento_atividades ADD COLUMN custo_total numeric GENERATED ALWAYS AS ((custo_material + custo_mao_obra) * quantidade) STORED;
