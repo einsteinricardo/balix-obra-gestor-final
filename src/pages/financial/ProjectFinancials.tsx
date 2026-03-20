@@ -203,7 +203,7 @@ const ProjectFinancials = () => {
         </Tabs>
 
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-          <DialogContent className="overflow-hidden border-border bg-card/95 p-0 shadow-2xl backdrop-blur-xl sm:max-w-2xl">
+          <DialogContent className="overflow-hidden border-border bg-card/95 p-0 shadow-2xl backdrop-blur-xl sm:max-w-4xl">
             <DialogHeader className="border-b border-border bg-secondary/40 px-6 py-5">
               <DialogTitle className="text-xl text-foreground">
                 {editingRecord ? 'Editar Movimentação Financeira' : 'Nova Movimentação Financeira'}

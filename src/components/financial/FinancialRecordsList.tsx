@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
+import { Edit, Trash2, TrendingDown, TrendingUp, ChevronLeft, ChevronRight, X, Eye } from 'lucide-react';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -22,6 +23,7 @@ interface FinancialRecord {
   payment_method: string;
   item_number: number;
   week_number: number;
+  receipt_url?: string | null;
 }
 
 interface FinancialRecordsListProps {
@@ -42,9 +44,37 @@ export const FinancialRecordsList: React.FC<FinancialRecordsListProps> = ({
   const [filtroAtivo, setFiltroAtivo] = useState<'tipo' | 'semana' | 'ordem'>('tipo');
   const [dataInicial, setDataInicial] = useState<string>('');
   const [dataFinal, setDataFinal] = useState<string>('');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [imageIndex, setImageIndex] = useState(0);
+
   const { toast } = useToast();
   const { selectedProjectId } = useProject();
   const { user } = useAuth();
+
+  const openGallery = (urlString: string) => {
+    setSelectedImages(urlString.split(','));
+    setImageIndex(0);
+    setModalOpen(true);
+  };
+
+  const nextImage = React.useCallback(() => {
+    setImageIndex((prev) => (prev + 1) % selectedImages.length);
+  }, [selectedImages]);
+
+  const prevImage = React.useCallback(() => {
+    setImageIndex((prev) => (prev === 0 ? selectedImages.length - 1 : prev - 1));
+  }, [selectedImages]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!modalOpen) return;
+      if (e.key === 'ArrowRight') nextImage();
+      if (e.key === 'ArrowLeft') prevImage();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [modalOpen, nextImage, prevImage]);
 
   useEffect(() => {
     if (selectedProjectId) fetchRecords();
@@ -184,6 +214,17 @@ export const FinancialRecordsList: React.FC<FinancialRecordsListProps> = ({
               <span>
                 <strong className="text-foreground">Pagamento:</strong> {record.payment_method}
               </span>
+              {record.receipt_url && (
+                <span className="sm:col-span-2 mt-1">
+                  <button 
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); openGallery(record.receipt_url); }}
+                    className="text-primary hover:underline font-medium text-xs flex items-center gap-1 w-fit bg-primary/5 px-2 py-1 rounded transition-colors hover:bg-primary/10 cursor-pointer"
+                  >
+                    <Eye className="mr-1 h-3 w-3" />
+                    Ver {record.receipt_url.split(',').length > 1 ? `${record.receipt_url.split(',').length} Comprovantes` : 'Comprovante'}
+                  </button>
+                </span>
+              )}
             </div>
           </div>
 
@@ -348,6 +389,75 @@ export const FinancialRecordsList: React.FC<FinancialRecordsListProps> = ({
       {filtroAplicado === 'tipo' && renderEntradasSaidas()}
       {filtroAplicado === 'semana' && renderPorSemana()}
       {filtroAplicado === 'ordem' && renderOrdenado()}
+
+      {/* Interactive Carousel Dialog */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="max-w-[95vw] sm:max-w-[80vw] md:max-w-4xl p-0 bg-black/95 border-none shadow-2xl overflow-hidden [&>button]:hidden">
+          <DialogTitle className="sr-only">Visualizador de Comprovantes</DialogTitle>
+          {selectedImages.length > 0 && (
+            <div className="relative w-full h-[85vh] flex flex-col justify-center items-center">
+              {/* Close Button Top */}
+              <button 
+                onClick={() => setModalOpen(false)}
+                className="absolute top-4 right-4 z-50 p-2 bg-black/50 hover:bg-black/80 text-white rounded-full transition-all"
+              >
+                <X className="h-6 w-6" />
+              </button>
+              
+              {/* Header Indicator */}
+              <div className="absolute top-4 left-4 z-50 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full text-white/90 text-sm font-medium">
+                Imagem {imageIndex + 1} de {selectedImages.length}
+              </div>
+
+              {/* Main Image Viewport Area */}
+              <div className="flex-1 w-full h-full flex items-center justify-center p-4" onClick={(e) => {
+                if (e.target === e.currentTarget) setModalOpen(false);
+              }}>
+                <img 
+                  src={selectedImages[imageIndex]} 
+                  alt={`Preview ${imageIndex + 1}`}
+                  className="max-w-full max-h-[70vh] object-contain select-none shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-md transition-opacity duration-300"
+                />
+              </div>
+
+              {/* Arrows */}
+              {selectedImages.length > 1 && (
+                <>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                    className="absolute left-2 md:left-6 top-1/2 -translate-y-1/2 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-sm transition-all shadow-xl hover:scale-105"
+                  >
+                    <ChevronLeft className="h-8 w-8" />
+                  </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                    className="absolute right-2 md:right-6 top-1/2 -translate-y-1/2 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-sm transition-all shadow-xl hover:scale-105"
+                  >
+                    <ChevronRight className="h-8 w-8" />
+                  </button>
+                </>
+              )}
+
+              {/* Thumbnails */}
+              {selectedImages.length > 1 && (
+                <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 px-4 overflow-x-auto pb-2 snap-x hide-scrollbar">
+                  {selectedImages.map((img, idx) => (
+                    <button
+                      key={idx}
+                      onClick={(e) => { e.stopPropagation(); setImageIndex(idx); }}
+                      className={`relative h-16 w-24 flex-shrink-0 rounded-md overflow-hidden transition-all snap-center ${
+                        idx === imageIndex ? 'ring-2 ring-primary opacity-100 scale-105' : 'opacity-40 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={img} className="w-full h-full object-cover" alt={`Thumb ${idx + 1}`} />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

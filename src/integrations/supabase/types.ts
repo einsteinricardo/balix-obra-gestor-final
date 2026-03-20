@@ -26,6 +26,7 @@ export type Database = {
           movement_type: string
           payment_method: string
           project_id: string
+          receipt_url: string | null
           transaction_date: string
           updated_at: string
           user_id: string
@@ -44,6 +45,7 @@ export type Database = {
           movement_type: string
           payment_method: string
           project_id: string
+          receipt_url?: string | null
           transaction_date: string
           updated_at?: string
           user_id: string
@@ -62,6 +64,7 @@ export type Database = {
           movement_type?: string
           payment_method?: string
           project_id?: string
+          receipt_url?: string | null
           transaction_date?: string
           updated_at?: string
           user_id?: string

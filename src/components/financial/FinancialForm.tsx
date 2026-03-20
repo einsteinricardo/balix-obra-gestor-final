@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useProject } from "@/contexts/ProjectContext";
 import { DateRange } from "react-day-picker";
 import { DatePickerWithRange } from "@/components/ui/date-range-picker";
+import ImageUpload from "@/components/common/ImageUpload";
 
 const formSchema = z.object({
   week_number: z.coerce.number().int().positive("Informe um número válido."),
@@ -38,6 +39,7 @@ const formSchema = z.object({
   transaction_date: z.string().min(1, "Selecione a data."),
   amount: z.coerce.number().positive("Informe um valor maior que zero."),
   id: z.string().optional(),
+  receipt_url: z.string().optional(),
 });
 
 interface FinancialFormProps {
@@ -58,6 +60,9 @@ const PAYMENT_METHODS = ["transferencia", "pix", "cartao_credito", "dinheiro", "
 export const FinancialForm: React.FC<FinancialFormProps> = ({ userId, record, onClose }) => {
   const { toast } = useToast();
   const { selectedProjectId } = useProject();
+  const initialReceiptUrls = record?.receipt_url ? record.receipt_url.split(',') : [];
+  const [imageUrls, setImageUrls] = React.useState<string[]>(initialReceiptUrls);
+  const [isUploading, setIsUploading] = React.useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -77,6 +82,7 @@ export const FinancialForm: React.FC<FinancialFormProps> = ({ userId, record, on
       transaction_date: record?.transaction_date || record?.date || "",
       amount: record?.amount || 0,
       id: record?.id,
+      receipt_url: record?.receipt_url || undefined,
     },
   });
 
@@ -97,7 +103,9 @@ export const FinancialForm: React.FC<FinancialFormProps> = ({ userId, record, on
       transaction_date: record?.transaction_date || record?.date || "",
       amount: record?.amount || 0,
       id: record?.id,
+      receipt_url: record?.receipt_url || undefined,
     });
+    setImageUrls(record?.receipt_url ? record.receipt_url.split(',') : []);
   }, [record, form]);
 
   const movementType = form.watch("movement_type");
@@ -130,11 +138,14 @@ export const FinancialForm: React.FC<FinancialFormProps> = ({ userId, record, on
     }
 
     try {
+      setIsUploading(true);
       const transactionDate = new Date(`${values.transaction_date}T12:00:00`);
 
       if (Number.isNaN(transactionDate.getTime())) {
         throw new Error("Data inválida.");
       }
+
+      const finalReceiptUrl = imageUrls.length > 0 ? imageUrls.join(',') : null;
 
       const weekStart = values.week_range.from;
       const weekEnd = values.week_range.to as Date;
@@ -159,6 +170,7 @@ export const FinancialForm: React.FC<FinancialFormProps> = ({ userId, record, on
         transaction_date: values.transaction_date,
         amount: Number(values.amount),
         item_number: itemNumber,
+        receipt_url: finalReceiptUrl,
       };
 
       const { error } = await supabase.from("cash_flow_entries").upsert(upsertData);
@@ -171,6 +183,8 @@ export const FinancialForm: React.FC<FinancialFormProps> = ({ userId, record, on
       onClose(true);
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -184,7 +198,7 @@ export const FinancialForm: React.FC<FinancialFormProps> = ({ userId, record, on
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="week_number">Número da Semana</Label>
             <Input
@@ -204,7 +218,11 @@ export const FinancialForm: React.FC<FinancialFormProps> = ({ userId, record, on
             <Label>Intervalo da Semana</Label>
             <DatePickerWithRange
               date={form.watch("week_range")}
-              setDate={(date) => form.setValue("week_range", date as DateRange, { shouldValidate: true })}
+              setDate={(date) => {
+                if (date?.from) {
+                  form.setValue("week_range", { from: date.from as Date, to: date.to }, { shouldValidate: true })
+                }
+              }}
             />
             {form.formState.errors.week_range && (
               <p className="text-sm text-destructive">{form.formState.errors.week_range.message}</p>
@@ -336,15 +354,29 @@ export const FinancialForm: React.FC<FinancialFormProps> = ({ userId, record, on
               <p className="text-sm text-destructive">{form.formState.errors.amount.message}</p>
             )}
           </div>
+
+          <div className="space-y-2 md:col-span-3">
+            <Label>Comprovantes (Imagens)</Label>
+            <div className="mt-2 bg-secondary/20 p-4 rounded-lg border border-border">
+              <ImageUpload
+                onUpload={setImageUrls}
+                existingImages={imageUrls}
+                userId={userId}
+                bucketName="receipts"
+                multiple={true}
+                autoUpload={true}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-        <Button type="button" variant="outline" onClick={() => onClose()}>
+        <Button type="button" variant="outline" onClick={() => onClose()} disabled={isUploading}>
           Cancelar
         </Button>
-        <Button type="submit">
-          Salvar lançamento
+        <Button type="submit" disabled={isUploading}>
+          {isUploading ? "Salvando..." : "Salvar lançamento"}
         </Button>
       </div>
     </form>

@@ -12,6 +12,8 @@ interface ImageUploadProps {
   multiple?: boolean;
   userId: string;
   clearOnSuccess?: boolean;
+  bucketName?: string;
+  autoUpload?: boolean;
 }
 
 const ImageUpload: React.FC<ImageUploadProps> = ({
@@ -19,7 +21,9 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   existingImages = [],
   multiple = true,
   userId,
-  clearOnSuccess = false
+  clearOnSuccess = false,
+  bucketName = 'work-images',
+  autoUpload = false
 }) => {
   const [uploading, setUploading] = useState(false);
   const [images, setImages] = useState<string[]>(existingImages);
@@ -28,7 +32,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSelectImages = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSelectImages = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || event.target.files.length === 0) return;
 
     const files = Array.from(event.target.files);
@@ -58,32 +62,36 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       validUrls.push(URL.createObjectURL(file));
     }
 
-    setSelectedFiles(prev => multiple ? [...prev, ...validFiles] : validFiles);
-    setPreviewUrls(prev => multiple ? [...prev, ...validUrls] : validUrls);
+    if (autoUpload && validFiles.length > 0) {
+      await performUpload(validFiles);
+    } else {
+      setSelectedFiles(prev => multiple ? [...prev, ...validFiles] : validFiles);
+      setPreviewUrls(prev => multiple ? [...prev, ...validUrls] : validUrls);
+    }
     
     // Clear the input so selecting the same file again triggers onChange
     event.target.value = '';
   };
 
-  const confirmUpload = async () => {
-    if (selectedFiles.length === 0) return;
+  const performUpload = async (filesToUpload: File[]) => {
+    if (filesToUpload.length === 0) return;
 
     try {
       setUploading(true);
       const uploadedUrls: string[] = [];
 
-      for (const file of selectedFiles) {
+      for (const file of filesToUpload) {
         const fileExt = file.name.split('.').pop();
         const fileName = `${userId}/${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
 
         const { error: uploadError } = await supabase.storage
-          .from('work-images')
+          .from(bucketName)
           .upload(fileName, file);
 
         if (uploadError) throw uploadError;
 
         const { data: { publicUrl } } = supabase.storage
-          .from('work-images')
+          .from(bucketName)
           .getPublicUrl(fileName);
 
         uploadedUrls.push(publicUrl);
@@ -97,12 +105,14 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         onUpload(newImages);
       }
       
-      // 1. Revogar URLs
-      previewUrls.forEach((url) => URL.revokeObjectURL(url));
+      if (!autoUpload) {
+        // 1. Revogar URLs
+        previewUrls.forEach((url) => URL.revokeObjectURL(url));
 
-      // 2. Limpar estados
-      setSelectedFiles([]);
-      setPreviewUrls([]);
+        // 2. Limpar estados
+        setSelectedFiles([]);
+        setPreviewUrls([]);
+      }
 
       // 3. Resetar input
       if (fileInputRef.current) {
@@ -124,6 +134,8 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       setUploading(false);
     }
   };
+
+  const confirmUpload = () => performUpload(selectedFiles);
 
   const removeImage = (indexToRemove: number) => {
     const newImages = images.filter((_, index) => index !== indexToRemove);
