@@ -54,16 +54,22 @@ const ShortcutButton: React.FC<ShortcutButtonProps> = ({
     <Button
       variant="outline"
       className={cn(
-        'flex flex-col items-center justify-center h-auto py-6 w-full border-border/50 bg-secondary/50 hover:bg-secondary hover:border-balix-accent/50',
+        'flex flex-col items-center justify-center h-auto py-10 w-full bg-white/[0.02] border border-white/[0.08] rounded-[16px] shadow-[0_6px_24px_rgba(0,0,0,0.25)] backdrop-blur-[6px] transition-all duration-300 hover:translate-y-[-2px] hover:bg-white/[0.05] hover:border-[#a2632a]/30 group',
         className
       )}
     >
-      <div className="p-3 rounded-full bg-balix-accent/10 mb-3">
-        {renderIcon()}
+      <div className="p-4 rounded-xl bg-[#a2632a]/10 mb-5 group-hover:bg-[#a2632a]/20 transition-colors">
+        <div className="text-[#a2632a]">
+          {renderIcon()}
+        </div>
       </div>
-      <span className="text-sm font-medium">{label}</span>
+      <span className="text-[14px] font-bold tracking-[0.5px] text-white/90 group-hover:text-white transition-colors text-center px-2 leading-tight break-words uppercase">
+        {label}
+      </span>
       {description && (
-        <span className="text-xs text-muted-foreground mt-1">{description}</span>
+        <span className="text-[11px] text-white/40 mt-2 font-medium group-hover:text-white/60 transition-colors text-center px-4">
+          {description}
+        </span>
       )}
     </Button>
   );

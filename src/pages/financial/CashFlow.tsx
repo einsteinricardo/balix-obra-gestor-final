@@ -6,6 +6,7 @@ import PermissionGuard from "@/components/rbac/PermissionGuard";
 import GenerateReportButton from "@/components/reports/GenerateReportButton";
 
 const CashFlow: React.FC = () => {
+  const [filterType, setFilterType] = useState<'semana' | 'intervalo'>('semana');
   const [filters, setFilters] = useState<{
     startDate?: string;
     endDate?: string;
@@ -15,7 +16,7 @@ const CashFlow: React.FC = () => {
   return (
     <AppLayout>
       <div className="animate-fade-in">
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="text-3xl font-bold text-primary">Fluxo de Caixa</h2>
             <p className="text-muted-foreground">
@@ -23,11 +24,26 @@ const CashFlow: React.FC = () => {
             </p>
           </div>
           <PermissionGuard module="relatorios" action="read">
-            <GenerateReportButton startDate={filters.startDate} endDate={filters.endDate} />
+            <div className="flex flex-wrap gap-3">
+              <GenerateReportButton 
+                startDate={filters.startDate} 
+                endDate={filters.endDate} 
+                mode="fluxo"
+              />
+              <GenerateReportButton 
+                startDate={filters.startDate} 
+                endDate={filters.endDate} 
+                mode="comprovantes"
+              />
+            </div>
           </PermissionGuard>
         </div>
 
-        <CashFlowFilters onFilterChange={setFilters} />
+        <CashFlowFilters 
+          onFilterChange={setFilters} 
+          filterType={filterType}
+          setFilterType={setFilterType}
+        />
         <CashFlowWeekCard startDate={filters.startDate} endDate={filters.endDate} />
       </div>
     </AppLayout>

@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { pdf } from '@react-pdf/renderer';
-import { FileText, Loader2 } from 'lucide-react';
+import { FileText, Loader2, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useProject } from '@/contexts/ProjectContext';
 import { toast } from 'sonner';
 import CashFlowReportPDF from './CashFlowReportPDF';
+import ReceiptsReportPDF from './ReceiptsReportPDF';
 
 interface GenerateReportButtonProps {
   startDate?: string;
   endDate?: string;
+  mode: 'fluxo' | 'comprovantes';
 }
 
 interface EntryRow {
@@ -24,9 +26,10 @@ interface EntryRow {
   transaction_date: string;
   amount: number;
   item_number: number;
+  receipt_url?: string;
 }
 
-const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({ startDate, endDate }) => {
+const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({ startDate, endDate, mode }) => {
   const [loading, setLoading] = useState(false);
   const { selectedProject, selectedProjectId } = useProject();
 
@@ -100,6 +103,7 @@ const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({ startDate, 
             transactionDate: r.transaction_date,
             amount: Number(r.amount),
             movementType: r.movement_type,
+            receiptUrls: r.receipt_url ? r.receipt_url.split(',') : [],
           })),
         };
       });
@@ -111,7 +115,7 @@ const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({ startDate, 
         filterPeriod = `${s} — ${e}`;
       }
 
-      const blob = await pdf(
+      const reportContent = mode === 'fluxo' ? (
         <CashFlowReportPDF
           projectName={selectedProject.name}
           technicalManager={selectedProject.technical_manager || ''}
@@ -121,13 +125,24 @@ const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({ startDate, 
           saldoFinal={saldoAcumulado}
           filterPeriod={filterPeriod}
         />
-      ).toBlob();
+      ) : (
+        <ReceiptsReportPDF
+          projectName={selectedProject.name}
+          technicalManager={selectedProject.technical_manager || ''}
+          weeks={weeks}
+          filterPeriod={filterPeriod}
+        />
+      );
+
+      const blob = await pdf(reportContent).toBlob();
 
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       const safeName = selectedProject.name.replace(/[^a-zA-Z0-9]/g, '_');
+      const title = mode === 'fluxo' ? 'Relatorio_Fluxo_Caixa' : 'Relatorio_Comprovantes';
+      
       link.href = url;
-      link.download = `Relatorio_Fluxo_Caixa_${safeName}.pdf`;
+      link.download = `${title}_${safeName}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -142,10 +157,23 @@ const GenerateReportButton: React.FC<GenerateReportButtonProps> = ({ startDate, 
     }
   };
 
+  const isFluxo = mode === 'fluxo';
+
   return (
-    <Button onClick={handleGenerate} disabled={loading || !selectedProjectId} variant="outline">
-      {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
-      Gerar Relatório PDF
+    <Button 
+      onClick={handleGenerate} 
+      disabled={loading || !selectedProjectId} 
+      variant={isFluxo ? "outline" : "default"}
+      className={!isFluxo ? "bg-balix-accent hover:bg-balix-accent/90 text-[#151f0e] font-semibold" : ""}
+    >
+      {loading ? (
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+      ) : isFluxo ? (
+        <FileText className="mr-2 h-4 w-4" />
+      ) : (
+        <ImageIcon className="mr-2 h-4 w-4" />
+      )}
+      {isFluxo ? "Relatório Fluxo de Caixa" : "Relatório Comprovantes"}
     </Button>
   );
 };

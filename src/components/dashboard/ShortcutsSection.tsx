@@ -7,9 +7,8 @@ const ShortcutsSection: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="mb-8">
-      <h3 className="text-xl font-bold mb-4">Ações Rápidas</h3>
-      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4">
+    <div className="w-full">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
         <ShortcutButton
           icon="file-plus"
           label="Projetos"

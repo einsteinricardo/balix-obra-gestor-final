@@ -66,7 +66,7 @@ export default {
 				// Balix Construtora Theme Colors
 				"balix": {
 					"primary": "#1f2812",
-					"accent": "#a76429",
+					"accent": "#a2632a",
 					"text": "#2D2D2D",
 					"light": "#f5f5f5",
 					"muted": "#6b7280"

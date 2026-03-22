@@ -54,3 +54,22 @@ export const ATIVIDADES_PRINCIPAIS = [
 ] as const;
 
 export type AtividadePrincipal = typeof ATIVIDADES_PRINCIPAIS[number];
+
+/**
+ * Centralized sorting function for main activities to ensure consistency across the system.
+ * It uses the predefined order in ATIVIDADES_PRINCIPAIS constant.
+ */
+export function sortAtividadesPrincipais<T extends { stage_name?: string; nome?: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => {
+    const nameA = a.stage_name || a.nome || '';
+    const nameB = b.stage_name || b.nome || '';
+    
+    const idxA = ATIVIDADES_PRINCIPAIS.indexOf(nameA as any);
+    const idxB = ATIVIDADES_PRINCIPAIS.indexOf(nameB as any);
+    
+    const posA = idxA === -1 ? 999 : idxA;
+    const posB = idxB === -1 ? 999 : idxB;
+    
+    return posA - posB;
+  });
+}

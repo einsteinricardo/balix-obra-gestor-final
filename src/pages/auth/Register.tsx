@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { backgroundLogin } from '@/assets';
 
 const Register = () => {
   const [fullName, setFullName] = useState('');
@@ -65,34 +66,39 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-white mb-2">Sistema de Gerenciamento de Obras</h1>
-          <p className="text-gray-300">Crie sua conta</p>
-        </div>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Criar Conta</CardTitle>
-            <CardDescription>
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      {/* Background image */}
+      <img 
+        src={backgroundLogin} 
+        alt="" 
+        className="absolute inset-0 w-full h-full object-cover object-center"
+      />
+      {/* Overlay for better form visibility */}
+      <div className="absolute inset-0 bg-black/30"></div>
+
+      <div className="w-full max-w-md relative z-10">
+        <Card className="border-border/50 bg-balix-primary/95 backdrop-blur-sm shadow-2xl">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-playfair text-balix-light">Criar Conta</CardTitle>
+            <CardDescription className="text-balix-light/80">
               Preencha os dados para registrar-se no sistema
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSignup}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="fullName">Nome Completo</Label>
+                <Label htmlFor="fullName" className="text-balix-light">Nome Completo</Label>
                 <Input 
                   id="fullName"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Nome completo"
                   required
+                  className="bg-balix-primary/50 border-border/50 text-balix-light placeholder:text-balix-light/60"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-balix-light">Email</Label>
                 <Input 
                   id="email"
                   type="email" 
@@ -100,10 +106,11 @@ const Register = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="seu@email.com"
                   required
+                  className="bg-balix-primary/50 border-border/50 text-balix-light placeholder:text-balix-light/60"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
+                <Label htmlFor="password" className="text-balix-light">Senha</Label>
                 <Input 
                   id="password"
                   type="password"
@@ -112,10 +119,11 @@ const Register = () => {
                   placeholder="********"
                   required
                   minLength={6}
+                  className="bg-balix-primary/50 border-border/50 text-balix-light placeholder:text-balix-light/60"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirmar Senha</Label>
+                <Label htmlFor="confirmPassword" className="text-balix-light">Confirmar Senha</Label>
                 <Input 
                   id="confirmPassword"
                   type="password"
@@ -124,6 +132,7 @@ const Register = () => {
                   placeholder="********"
                   required
                   minLength={6}
+                  className="bg-balix-primary/50 border-border/50 text-balix-light placeholder:text-balix-light/60"
                 />
               </div>
             </CardContent>
@@ -131,13 +140,13 @@ const Register = () => {
               <Button 
                 type="submit"
                 disabled={loading}
-                className="w-full"
+                className="w-full bg-balix-accent hover:bg-balix-accent/90 text-white font-medium"
               >
                 {loading ? 'Criando conta...' : 'Cadastrar'}
               </Button>
-              <div className="text-center text-sm">
+              <div className="text-center text-sm text-balix-light/80">
                 Já tem uma conta?{' '}
-                <Link to="/login" className="text-blue-500 hover:underline">
+                <Link to="/login" className="text-balix-accent hover:underline font-medium">
                   Faça login
                 </Link>
               </div>

@@ -5,7 +5,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import ProgressTable from '@/components/progress/ProgressTable';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProject } from '@/contexts/ProjectContext';
-import { ATIVIDADES_PRINCIPAIS } from '@/types/budget';
+import { sortAtividadesPrincipais } from '@/types/budget';
 
 const ProjectProgress = () => {
   const [records, setRecords] = useState<any[]>([]);
@@ -56,15 +56,8 @@ const ProjectProgress = () => {
         };
       });
       
-      mappedData.sort((a, b) => {
-        const idxA = ATIVIDADES_PRINCIPAIS.indexOf(a.stage_name as any);
-        const idxB = ATIVIDADES_PRINCIPAIS.indexOf(b.stage_name as any);
-        const posA = idxA === -1 ? 999 : idxA;
-        const posB = idxB === -1 ? 999 : idxB;
-        return posA - posB;
-      });
-
-      setRecords(mappedData);
+      const sortedData = sortAtividadesPrincipais(mappedData);
+      setRecords(sortedData);
     } catch (error: any) {
       toast({ title: 'Erro ao carregar orçamentos de progresso', description: error.message, variant: 'destructive' });
     } finally {

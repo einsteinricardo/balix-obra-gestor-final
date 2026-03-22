@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, RefreshCw, TrendingDown, TrendingUp, DollarSign } from 'lucide-react';
+import { Plus, RefreshCw, TrendingDown, TrendingUp, DollarSign, AlertCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FinancialRecordsList } from '@/components/financial/FinancialRecordsList';
 import { FinancialForm } from '@/components/financial/FinancialForm';
 import { FinancialCharts } from '@/components/financial/FinancialCharts';
+import { AdministrationTab } from '@/components/financial/AdministrationTab';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProject } from '@/contexts/ProjectContext';
 import PermissionGuard from '@/components/rbac/PermissionGuard';
@@ -29,13 +31,29 @@ const ProjectFinancials = () => {
     totalExpense: 0,
     balance: 0,
   });
+  const { selectedProjectId, currentRole, isAdmin } = useProject();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { selectedProjectId } = useProject();
+  const [searchParams] = useSearchParams();
+  const [abaSelecionada, setAbaSelecionada] = useState<string>("transactions");
+
+  const podeVerAdministracao = 
+    isAdmin || 
+    ['Administrador', 'Proprietário', 'Gestor da Obra', 'Financeiro'].includes(currentRole?.role_nome || '');
 
   useEffect(() => {
-    if (user && selectedProjectId) fetchFinancialSummary();
+    const abaParam = searchParams.get('aba');
+    if (abaParam === 'administracao' && podeVerAdministracao) {
+      setAbaSelecionada('administracao');
+    }
+  }, [searchParams, podeVerAdministracao]);
+
+  useEffect(() => {
+    if (user && selectedProjectId) {
+      fetchFinancialSummary();
+    }
   }, [user, selectedProjectId, refreshKey]);
+
 
   const fetchFinancialSummary = async () => {
     if (!selectedProjectId) return;
@@ -166,10 +184,11 @@ const ProjectFinancials = () => {
           </Card>
         </div>
 
-        <Tabs defaultValue="transactions" className="w-full">
+        <Tabs value={abaSelecionada} onValueChange={setAbaSelecionada} className="w-full">
           <TabsList className="mb-4">
             <TabsTrigger value="transactions">Lista de Movimentações</TabsTrigger>
-            <TabsTrigger value="reports">Relatórios e Gráficos</TabsTrigger>
+            <TabsTrigger value="charts">Gráficos</TabsTrigger>
+            {podeVerAdministracao && <TabsTrigger value="administration">Administração</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="transactions">
@@ -190,15 +209,31 @@ const ProjectFinancials = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="reports">
+          <TabsContent value="charts">
             <Card>
               <CardHeader>
-                <CardTitle className="text-foreground">Análise Financeira</CardTitle>
+                <CardTitle className="text-foreground">Análise Visual</CardTitle>
               </CardHeader>
               <CardContent className="pt-6">
                 {user && <FinancialCharts userId={user.id} refreshKey={refreshKey} />}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="administration">
+            {selectedProjectId && (
+              podeVerAdministracao ? (
+                <AdministrationTab 
+                  projectId={selectedProjectId} 
+                  userRole={currentRole?.role_nome} 
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center py-20 text-white/20">
+                  <AlertCircle className="h-10 w-10 mb-2 opacity-50" />
+                  <p>Acesso restrito. Esta área é exclusiva para Administração, Gestão e Financeiro.</p>
+                </div>
+              )
+            )}
           </TabsContent>
         </Tabs>
 
