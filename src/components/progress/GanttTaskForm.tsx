@@ -28,23 +28,24 @@ const ganttTaskSchema = z.object({
 type GanttTaskFormData = z.infer<typeof ganttTaskSchema>;
 
 interface GanttTaskFormProps {
-  task: GanttActivityPersistence;
+  task: GanttChartViewTask;
   allTasks: GanttChartViewTask[];
-  onClose: (refresh?: boolean, simulatedData?: GanttTaskFormData) => void;
+  onClose: () => void;
   simulationMode?: boolean;
+  updateTask: (task: GanttChartViewTask) => void;
 }
 
-const GanttTaskForm: React.FC<GanttTaskFormProps> = ({ task, allTasks, onClose, simulationMode }) => {
+const GanttTaskForm: React.FC<GanttTaskFormProps> = ({ task, allTasks, onClose, simulationMode, updateTask }) => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
   const form = useForm<GanttTaskFormData>({
     resolver: zodResolver(ganttTaskSchema),
     defaultValues: {
-      start_date: task.data_inicio || format(new Date(), 'yyyy-MM-dd'),
-      end_date: task.data_fim || format(new Date(), 'yyyy-MM-dd'),
-      status: task.status || 'not_started',
-      progress: task.progresso || 0,
+      start_date: task.start || format(new Date(), 'yyyy-MM-dd'),
+      end_date: task.end || format(new Date(), 'yyyy-MM-dd'),
+      status: task.status?.replace('-', '_') as any || 'not_started',
+      progress: task.progress || 0,
       fullDependencies: task.fullDependencies?.map(d => ({
         predecessora_id: d.predecessora_id,
         tipo: d.tipo,
@@ -59,65 +60,40 @@ const GanttTaskForm: React.FC<GanttTaskFormProps> = ({ task, allTasks, onClose, 
   });
 
   const onSubmit = async (data: GanttTaskFormData) => {
-    if (simulationMode) {
-      toast({ 
-        title: 'Simulação Aplicada', 
-        description: 'As alterações foram aplicadas localmente para visualização.' 
-      });
-      onClose(true, data);
-      return;
-    }
-
     setIsLoading(true);
     try {
-      // 1. Update basic task data
-      const updateData = {
-        data_inicio: data.start_date,
-        data_fim: data.end_date,
-        status: data.status,
-        progresso: data.progress,
-        updated_at: new Date().toISOString()
-      };
+      if (simulationMode) {
+        toast({ 
+          title: 'Simulação Aplicada', 
+          description: 'As alterações foram aplicadas localmente para visualização.' 
+        });
+      } else {
+        toast({ 
+          title: 'Alterações aplicadas', 
+          description: 'Clique em "Salvar Alterações" no cabeçalho para persistir as mudanças no banco de dados.' 
+        });
+      }
 
-      const { error: taskError } = await (supabase
-        .from('gantt_atividades' as any)
-        .update(updateData)
-        .eq('id', task.id) as any);
-
-      if (taskError) throw taskError;
-
-      // 2. Update dependencies (Delete old and insert new)
-      const { error: deleteError } = await supabase
-        .from('gantt_dependencies' as any)
-        .delete()
-        .eq('atividade_id', task.id);
-
-      if (deleteError) throw deleteError;
-
-      if (data.fullDependencies.length > 0) {
-        const insertDeps = data.fullDependencies.map(d => ({
+      const newTask: GanttChartViewTask = {
+        ...task,
+        start: data.start_date,
+        end: data.end_date,
+        status: data.status.replace('_', '-') as any,
+        progress: data.progress,
+        fullDependencies: data.fullDependencies.map(d => ({
+          id: crypto.randomUUID(),
           atividade_id: task.id,
           predecessora_id: d.predecessora_id,
           tipo: d.tipo,
           lag: d.lag
-        }));
+        }))
+      };
 
-        const { error: insertError } = await supabase
-          .from('gantt_dependencies' as any)
-          .insert(insertDeps);
-
-        if (insertError) throw insertError;
-      }
-      
-      toast({ 
-        title: 'Cronograma atualizado', 
-        description: 'Os dados e dependências foram salvos com sucesso.' 
-      });
-
-      onClose(true);
+      updateTask(newTask);
+      onClose();
     } catch (error: any) {
       toast({ 
-        title: 'Erro ao salvar alterações', 
+        title: 'Erro ao aplicar alterações', 
         description: error.message, 
         variant: 'destructive' 
       });

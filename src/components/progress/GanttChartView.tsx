@@ -100,7 +100,22 @@ const GanttChartView: React.FC<GanttChartViewProps> = ({
     const left = sidebarWidth + (offsetMs / msPerColumn) * columnWidth;
     const width = (durationMs / msPerColumn) * columnWidth;
 
-    return { left, width: Math.max(width, 4) };
+    // Calculate visual offset for FS dependencies with same date (MS Project visual style)
+    let visualOffset = 0;
+    if (task.fullDependencies) {
+      const hasFSOnSameDay = task.fullDependencies.some(dep => {
+        if (dep.tipo !== 'FS') return false;
+        const pred = tasks.find(t => t.orcamento_id === dep.predecessora_id || t.id === dep.predecessora_id);
+        if (!pred) return false;
+        
+        const taskStart = format(new Date(task.start), 'yyyy-MM-dd');
+        const predEnd = format(new Date(pred.end), 'yyyy-MM-dd');
+        return taskStart === predEnd;
+      });
+      if (hasFSOnSameDay) visualOffset = 4; // 4px offset as requested
+    }
+
+    return { left, width: Math.max(width, 4), visualOffset };
   };
 
   const getPredecessorsString = (task: GanttChartViewTask) => {
@@ -289,7 +304,7 @@ const GanttChartView: React.FC<GanttChartViewProps> = ({
                 {periods.map((period, index) => (
                   <div 
                     key={index} 
-                    className={`flex-shrink-0 border-r border-border/10 flex flex-col items-center justify-center text-[9px] font-bold ${viewMode === 'days' && (period.getDay() === 0 || period.getDay() === 6) ? 'bg-white/5' : ''}`}
+                    className={`flex-shrink-0 border-l border-border/10 flex flex-col items-center justify-center text-[9px] font-bold ${viewMode === 'days' && (period.getDay() === 0 || period.getDay() === 6) ? 'bg-white/5' : ''}`}
                     style={{ width: columnWidth }}
                   >
                     <span className="text-white/80">{viewMode === 'days' ? format(period, 'dd') : viewMode === 'weeks' ? `S${format(period, 'w')}` : format(period, 'MMM')}</span>
@@ -313,7 +328,7 @@ const GanttChartView: React.FC<GanttChartViewProps> = ({
           >
             <defs>
               <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                <polygon points="0 0, 10 3.5, 0 7" fill="rgba(255,255,255,0.4)" />
+                <polygon points="0 0, 10 3.5, 0 7" fill="rgba(255,255,255,0.7)" />
               </marker>
               <marker id="arrowhead-active" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
                 <polygon points="0 0, 10 3.5, 0 7" fill="#a2632a" />
@@ -329,15 +344,42 @@ const GanttChartView: React.FC<GanttChartViewProps> = ({
                 const pred = tasks[predIndex];
                 const { left: predLeft, width: predWidth } = getTaskPosition(pred);
                 const yPred = predIndex * taskRowHeight + (taskRowHeight / 2);
-                let startX = (dep.tipo === 'FS' || dep.tipo === 'FF') ? (predLeft - sidebarWidth + predWidth) : (predLeft - sidebarWidth);
-                let endX = (dep.tipo === 'FS' || dep.tipo === 'SS') ? (taskLeft - sidebarWidth) : (taskLeft - sidebarWidth + taskWidth);
-                const midX = startX + (endX - startX) / 2;
+
+                // MS Project L-shaped path: horizontal → vertical → horizontal
+                let startX: number, endX: number;
+                
+                // Start point: right side for FS/FF, left side for SS/SF
+                if (dep.tipo === 'FS' || dep.tipo === 'FF') {
+                  startX = predLeft - sidebarWidth + predWidth;
+                } else {
+                  startX = predLeft - sidebarWidth;
+                }
+                
+                // End point: left side for FS/SS, right side for FF/SF
+                if (dep.tipo === 'FS' || dep.tipo === 'SS') {
+                  endX = taskLeft - sidebarWidth;
+                } else {
+                  endX = taskLeft - sidebarWidth + taskWidth;
+                }
+
+                // L-shaped path: go right from predecessor, then down, then to successor
+                const gap = 8; // px offset from bars
+                const midX = startX + gap;
+                
+                const path = yPred === yTask
+                  ? `M ${startX} ${yPred} L ${endX} ${yTask}` // Same row: straight line
+                  : `M ${startX} ${yPred} L ${midX} ${yPred} L ${midX} ${yTask} L ${endX} ${yTask}`; // L-shape
+
+                const strokeColor = task.is_critical ? "rgba(229,57,51,0.5)" : "rgba(255,255,255,0.4)";
+
                 return (
                   <path
                     key={`${task.id}-dep-${depIndex}`}
-                    d={`M ${startX} ${yPred} L ${midX} ${yPred} L ${midX} ${yTask} L ${endX} ${yTask}`}
-                    fill="none" stroke={task.is_critical ? "rgba(229,57,51,0.4)" : "rgba(255,255,255,0.25)"}
-                    strokeWidth="1" markerEnd="url(#arrowhead)"
+                    d={path}
+                    fill="none" 
+                    stroke={strokeColor}
+                    strokeWidth="2" 
+                    markerEnd="url(#arrowhead)"
                   />
                 );
               });
@@ -351,12 +393,19 @@ const GanttChartView: React.FC<GanttChartViewProps> = ({
           </svg>
 
           <div className="absolute top-[64px] bottom-0 right-0 pointer-events-none flex" style={{ left: sidebarWidth }}>
-            {periods.map((_, i) => <div key={i} className="border-r border-border/5 h-full" style={{ width: columnWidth }} />)}
+            {periods.map((_, i) => (
+              <div 
+                key={i} 
+                className={`flex-shrink-0 border-l border-border/5 h-full`} 
+                style={{ width: columnWidth }} 
+              />
+            ))}
+            <div className="border-l border-border/5 h-full" />
           </div>
           
           <div className="bg-transparent relative">
             {tasks.map((task, index) => {
-              const { left, width } = getTaskPosition(task);
+              const { left, width, visualOffset } = getTaskPosition(task);
               const isPrincipal = task.type === 'principal';
               const isDragTarget = dragTargetId === (task.orcamento_id || task.id);
               
@@ -396,7 +445,11 @@ const GanttChartView: React.FC<GanttChartViewProps> = ({
                             className={`absolute top-3 h-[18px] rounded-[6px] shadow-[0_2px_8px_rgba(0,0,0,0.4)] ${getStatusColor(task)} flex items-center 
                               ${isPrincipal ? 'cursor-default h-[12px] top-[15px]' : 'cursor-pointer hover:brightness-110'} transition-all
                               ${isDragTarget ? 'ring-2 ring-[#a2632a] ring-offset-2 ring-offset-[#1a1f16]' : ''}`}
-                            style={{ left: left - sidebarWidth, width }}
+                            style={{ 
+                              left: left - sidebarWidth, 
+                              width,
+                              transform: visualOffset ? `translateX(${visualOffset}px)` : undefined
+                            }}
                             onMouseDown={(e) => handleDragStart(e, task)}
                             onClick={() => !isPrincipal && !dragSource && onEditTask(task)}
                           >
